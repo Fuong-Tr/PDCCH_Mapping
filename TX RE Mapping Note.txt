@@ -1,0 +1,39 @@
+Ý tưởng:
+	- Sử dụng 4 Block RAM, sắp xếp đọc ghi theo dạng RING. Mỗi Block RAM chứa thông tin của một Symbol (tương ứng bằng FFT size)
+		Ví dụ: Khối RE mapping ghi data của symbol 0 vào RAM 0, sau đó nhảy sang RAM 1 và tiến hành ghi data của Symbol 1 vào RAM 1
+		sau khi ghi symbol 0 vào RAM 0 xong, assert cờ 'symb_done' cho khối 'RG Read CTRL' bắt đầu đọc data từ RAM0 đưa vào khối IFFT.
+	- 
+
+Khối RE Mapping gồm 2 submodule lớn:
+- TX RE Mapping CTRL
+- RG RAM Read CTRL (Resource Grid RAM)
+
+1. TX RE Mapping CTRL
+- Input:
+	+ Thông tin tài nguyên cấp phát cho các kênh PDSCH, PDCCH, SSB (symbol nào, RB nào)
+	+ Thông tin data valid từ các kênh PDCCH, PDSCH, SSB
+	
+Tại mỗi Symbol, khối này kiểm tra cấu hình tài nguyên cấp phát cho SSB, PDCCH, PDSCH
+Thực hiện đọc RE data (I/Q sample, 32 bit) từ SSB FIFO, PDSCH FIFO, PDCCH FIFO và write vào RG RAM theo đúng địa chỉ RE index tương ứng.
+- RE Mapping gồm 3 Finite state machine
++ Main FSM: mô tả như sau
+	- State IDLE: Trạng thái mặc định khi khởi động lên, hoặc sau khi Reset
+	- Configuration Check: chờ đến khi cấu hình tài nguyên cho PDSCH, PDCCH, SSB đã ready
+	- Symbol check: Kiểm tra tại symbol Index hiện tại, có kênh nào được cấp phát tài nguyên không. Nếu có thì đọc từ Fifo của kênh tương ứng và ghi vào RAM
+	- WAIT symbol done: Chờ đến khi write RAM done (đọc hết các fifo cấu hình cho symbol tương ứng)
+	- Check RG status: Quá trình ghi có thể nhanh hơn quá trình đọc và xử lý, kiểm tra xem còn RAM nào trống để ghi vào không, nếu không còn thì chờ/
+	- Khi đã xử lý hết 14 symbol thì quay lại trạng thái IDLE và chờ DL_tti_request tiếp theo, nếu chưa xử lý xong 14 symbol thì quay lại symbol check và xử lý symbol tiếp theo.
++ WRITE RG RAM FSM: Xử lý tuần tự từng stream từ SSB, PDCCH đến PDSCH 
+	- Wait trigger: chờ đến khi nhận được cờ bắt đầu đọc dữ liệu từ các Stream fifo 
+	- Load Symbol Config: Nạp cấu hình cho symbol đang xủ lý 
+	- SSB Processing: Kiểm tra SSB có được cấp phát tài nguyên (RB) tại symbol này không, nếu có, đọc số lượng RE (sample) tương ứng, nếu không thì chuyển sang state tiếp theo 
+	- PDCCH Processing / PDSCH Processing: tương tự SSB processing
+	- Sau khi xử lý xong quay về trạng thái chờ trigger để xủ lý symbol tiếp theo 
++ CHECK RB RAM FULL FSM: Kiểm tra thạng thái (FULL OR NOT FULL) của 4 Resource Grid RAM 
+	- NOT FULL: trạng thái mặc định khi khởi động hệ thống hoặc sau khi Reset. chờ ở trạng thái này đến khi nhận tín hiệu 'write symbol done' từ WRITE_RG_RAM_FSM
+	- kiểm tra write pointer và read pointer, nếu write pointer chạy được 1 vòng và tiến đến read pointer, đồng nghĩa RAM đã full 
+	- POLLING RD PTR: trạng thái chờ và liên tục kiểm tra read pointer đến khi read pointer.
+2. RB RAM Read CTRL: Đây là khối đọc data từ RAM đẩy vào khối IFFT 
+	- IDLE: Trạng thái mặc định khi khởi động. Tại trạng thái này, chờ đến khi tín hiệu wr_done từ khối TX RE Mapping CTRL hoặc khi write pointer được cập nhật giá trị mới (sau khi write xong) 
+	- READ: Đọc N = IFFT size samples từ RG RAM 
+	- CHECK RG RAM STATUS: Kiểm tra trạng thái RAM, nếu cả 4 RAM đều Empty, quay lại trạng thái chờ 

@@ -24,14 +24,17 @@ module tb_pdcch_packer;
         .aclk(aclk), .aresetn(aresetn),
         .cfg_valid(cfg_valid), .cfg_ready(cfg_ready),
         .cfg_aggregation_level(cfg_aggregation_level),
+        
         .s_axis_data_tdata(s_axis_data_tdata),
         .s_axis_data_tvalid(s_axis_data_tvalid),
         .s_axis_data_tready(s_axis_data_tready),
         .s_axis_data_tlast(s_axis_data_tlast),
+        
         .s_axis_dmrs_tdata(s_axis_dmrs_tdata),
         .s_axis_dmrs_tvalid(s_axis_dmrs_tvalid),
         .s_axis_dmrs_tready(s_axis_dmrs_tready),
         .s_axis_dmrs_tlast(s_axis_dmrs_tlast),
+        
         .m_axis_re_tdata(m_axis_re_tdata),
         .m_axis_re_tvalid(m_axis_re_tvalid),
         .m_axis_re_tready(m_axis_re_tready),
@@ -71,6 +74,7 @@ module tb_pdcch_packer;
             cfg_aggregation_level = al[4:0]; cfg_valid = 1;
             @(posedge aclk);
             #1 cfg_valid = 0;
+            //hand shake start symbols
             nd=0; nm=0; no=0; cycles=0; re_pos=0; reg_pos=0;
             held=0; last_hold=0; stalls=0; dgaps=0; mgaps=0;
             while (no < 72*al && cycles < 30000) begin

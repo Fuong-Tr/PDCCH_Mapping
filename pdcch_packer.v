@@ -4,7 +4,7 @@ module pdcch_packer_minimal (
     input  wire         aclk,
     input  wire         aresetn,
 
-    // Configuration: cfg_aggregation_level is the actual AL value.
+    // Configuration: cfg_aggregation_level 
     input  wire         cfg_valid,
     output wire         cfg_ready,
     input  wire [4:0]   cfg_aggregation_level,
@@ -44,37 +44,26 @@ module pdcch_packer_minimal (
     wire        output_fire;
     wire        final_output_position;
 
-    // The source TLAST inputs are retained for standard AXI4-Stream packet
-    // compatibility. Packet completion is determined by AL-derived counts.
     wire unused_input_tlast;
     assign unused_input_tlast = s_axis_data_tlast ^ s_axis_dmrs_tlast;
 
     assign cfg_ready = (state == ST_IDLE);
 
-    assign select_dmrs = (re_index == 4'd1) ||
-                         (re_index == 4'd5) ||
-                         (re_index == 4'd9);
+    assign select_dmrs = (re_index == 4'd1) || (re_index == 4'd5) || (re_index == 4'd9);
 
-    assign selected_valid = select_dmrs ? s_axis_dmrs_tvalid
-                                        : s_axis_data_tvalid;
-    assign selected_data  = select_dmrs ? s_axis_dmrs_tdata
-                                        : s_axis_data_tdata;
+    assign selected_valid = select_dmrs ? s_axis_dmrs_tvalid : s_axis_data_tvalid;
+    assign selected_data  = select_dmrs ? s_axis_dmrs_tdata  : s_axis_data_tdata;
 
-    // Backpressure is propagated only to the source selected for this RE.
-    assign s_axis_data_tready = (state == ST_PACK) &&
-                                !select_dmrs && m_axis_re_tready;
-    assign s_axis_dmrs_tready = (state == ST_PACK) &&
-                                select_dmrs && m_axis_re_tready;
+    assign s_axis_data_tready = (state == ST_PACK) && !select_dmrs && m_axis_re_tready;
+    assign s_axis_dmrs_tready = (state == ST_PACK) &&  select_dmrs && m_axis_re_tready;
 
     assign m_axis_re_tvalid = (state == ST_PACK) && selected_valid;
     assign m_axis_re_tdata  = selected_data;
 
-    assign final_output_position =
-        (output_count == (expected_output_count - 11'd1));
+    assign final_output_position = (output_count == (expected_output_count - 11'd1));
 
     assign m_axis_re_tlast = m_axis_re_tvalid && final_output_position;
 
-    // TUSER = {is_dmrs, RE offset inside REG, logical REG index}.
     assign m_axis_re_tuser = {select_dmrs, re_index, reg_index};
 
     assign output_fire = m_axis_re_tvalid && m_axis_re_tready;

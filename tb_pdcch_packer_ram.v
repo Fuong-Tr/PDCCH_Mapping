@@ -346,14 +346,15 @@ module tb_pdcch_packer_ram;
 
                 if (expected_is_dmrs)
                     expected_value = 32'hD0000000 +
-                                     ((reg_pos * 9) +
+                                     ((reg_pos * 3) +
                                       ((re_pos == 1) ? 0 :
                                        (re_pos == 5) ? 1 : 2));
                 else
                     expected_value = 32'h10000000 +
                                      ((reg_pos * 9) +
-                                      ((re_pos > 1) ? 1 : 0) +
-                                      ((re_pos > 5) ? 1 : 0) +
+                                      re_pos -
+                                      ((re_pos > 1) ? 1 : 0) -
+                                      ((re_pos > 5) ? 1 : 0) -
                                       ((re_pos > 9) ? 1 : 0));
 
                 total_checked = total_checked + 1;

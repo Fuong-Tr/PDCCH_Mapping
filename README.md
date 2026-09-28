@@ -35,3 +35,14 @@ The project is intended for FPGA implementation and simulation in **Vivado**, as
 ## Status
 
 Work in progress — current development focuses on CCE-to-REG mapping, interleaving, AXI-style handshaking, and integration with the PDCCH RE mapping path.
+
+## PDCCH packer và testbench
+
+- `pdcch_packer.v`: output có thanh ghi, giữ dữ liệu khi stall, chặn handshake trong reset.
+- `tb_pdcch_packer.v`: top `tb_pdcch_packer`, tự kiểm tra từng mẫu và handshake.
+- [Giao tiếp, giới hạn và cách chạy](docs/PDCCH_PACKER.md).
+- Chạy regression: `bash scripts/run_pdcch_tests.sh`.
+
+AL của packer là **giá trị thực 1/2/4/8/16**. TLAST đầu vào không điều khiển
+độ dài gói; xem hợp đồng nguồn và xử lý dữ liệu thừa/thiếu trong tài liệu.
+
